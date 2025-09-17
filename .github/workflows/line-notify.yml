@@ -1,0 +1,45 @@
+name: LINE Notify Manual Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "Message to send to LINE"
+        required: true
+        default: "Workflow triggered"
+      sticker_package_id:
+        description: "Optional LINE sticker package ID"
+        required: false
+      sticker_id:
+        description: "Optional LINE sticker ID"
+        required: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send LINE notification
+        env:
+          LINE_NOTIFY_TOKEN: ${{ secrets.LINE_NOTIFY_TOKEN }}
+          INPUT_MESSAGE: ${{ github.event.inputs.message }}
+          INPUT_STICKER_PACKAGE_ID: ${{ github.event.inputs.sticker_package_id }}
+          INPUT_STICKER_ID: ${{ github.event.inputs.sticker_id }}
+        run: |
+          if [ -z "$LINE_NOTIFY_TOKEN" ]; then
+            echo "Missing LINE_NOTIFY_TOKEN secret" >&2
+            exit 1
+          fi
+
+          API_URL="https://notify-api.line.me/api/notify"
+
+          DATA=(
+            --form "message=$INPUT_MESSAGE"
+          )
+
+          if [ -n "$INPUT_STICKER_PACKAGE_ID" ] && [ -n "$INPUT_STICKER_ID" ]; then
+            DATA+=(--form "stickerPackageId=$INPUT_STICKER_PACKAGE_ID" --form "stickerId=$INPUT_STICKER_ID")
+          fi
+
+          curl -sS -X POST "$API_URL" \
+            -H "Authorization: Bearer $LINE_NOTIFY_TOKEN" \
+            "${DATA[@]}" | cat
